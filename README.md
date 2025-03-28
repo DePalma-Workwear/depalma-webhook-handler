@@ -12,6 +12,7 @@ A centralized webhook handling service built with Express and deployed as server
 - [Environment Variables](#environment-variables)
 - [Available Endpoints](#available-endpoints)
 - [Architecture](#architecture)
+- [Tests](#tests)
 
 ## Overview
 
@@ -86,21 +87,6 @@ To add support for a new service (e.g., Stripe):
 
 Example implementation for adding Stripe:
 
-```javascript
-// In src/handlers/stripe/index.js
-exports.handleWebhook = async (req, res) => {
-  // Stripe-specific implementation
-}
-
-// Then in netlify/functions/webhook.js, uncomment:
-// const stripeHandler = require('../../src/handlers/stripe');
-// ...
-// else if (req.headers['stripe-signature']) {
-//   logger.info('Identified as Stripe webhook');
-//   await stripeHandler.handleWebhook(req, res);
-// }
-```
-
 ## Deployment
 
 This project is designed to be deployed to Netlify.
@@ -127,16 +113,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_key
 # For future Stripe integration
 # STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 ```
-
-## Available Endpoints
-
-- `POST /.netlify/functions/webhook` - Main webhook endpoint
-- `GET /.netlify/functions/webhook/health` - Health check endpoint
-
-With Netlify redirects (configured in netlify.toml), these become:
-
-- `POST /api/webhook`
-- `GET /api/webhook/health`
 
 ## Architecture
 
@@ -181,6 +157,12 @@ Webhook Request
        ▼
    Response Generation
 ```
+
+### Tests
+
+- Add a test payload in src/test-payloads
+- Make sure the test payload have correct headers
+- Run node src/utils/test-webhook.js < your test payload here >
 
 ### Error Handling
 
