@@ -1,0 +1,22 @@
+{
+  "type": "user.created",
+  "data": {
+    "id": "user_test123",
+    "email_addresses": [
+      {
+        "email_address": "test@example.com"
+      }
+    ],
+    "first_name": "Test",
+    "last_name": "User",
+    "username": "testuser",
+    "external_accounts": [
+      {
+        "provider": "google",
+        "provider_user_id": "google_123456",
+        "email_address": "test@example.com",
+        "profile_image_url": "https://example.com/avatar.jpg"
+      }
+    ]
+  }
+}

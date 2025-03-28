@@ -1,0 +1,27 @@
+{
+  "name": "depalma-webhook-handler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "netlify build",
+    "deploy": "netlify deploy --prod"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@netlify/functions": "^3.0.4",
+    "@supabase/supabase-js": "^2.49.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "serverless-http": "^3.2.0",
+    "svix": "^1.62.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "axios": "^1.8.4",
+    "netlify-cli": "^19.0.3"
+  }
+}
