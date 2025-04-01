@@ -1,11 +1,15 @@
 const logger = require("../../../utils/logger")
 const { v4: uuidv4 } = require("uuid")
-const { supabaseClient } = require("../../../services/supabase")
+const { supabaseService } = require("../../../services/supabase")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
 
 module.exports = async (payload, res) => {
   try {
+    if (!payload || !payload.data) {
+      throw new Error("Invalid payload: Missing data")
+    }
+
     logger.info("Processing user.created event", { userId: payload.data.id })
     const uniqueGlobalId = uuidv4()
 
@@ -31,6 +35,11 @@ module.exports = async (payload, res) => {
       external_accounts = [],
     } = data
 
+    // Validate required fields
+    if (!id) {
+      throw new Error("Missing required field: id")
+    }
+
     // Prepare user data for Supabase
     const userDataToInsert = {
       clerkId: id,
@@ -42,63 +51,56 @@ module.exports = async (payload, res) => {
       unique_global_id: uniqueGlobalId,
     }
 
-    logger.info("Saving user to Supabase", userDataToInsert)
+    logger.info("Saving user to Supabase", {
+      clerkId: userDataToInsert.clerkId,
+      email: userDataToInsert.email,
+    })
 
     // Try to save the user
-    const { error } = await supabaseClient
-      .from("users")
-      .insert(userDataToInsert)
+    const newUser = await supabaseService.users.create(userDataToInsert)
 
-    if (error) {
-      logger.error("Supabase error:", error)
-      return res.status(500).json({
-        error: "Error saving user to Supabase",
-        details: error,
-      })
+    if (!newUser) {
+      throw new Error("Failed to create user in Supabase")
     }
 
-    // Get the new user's Supabase ID
-    const { data: newUser, error: fetchError } = await supabaseClient
-      .from("users")
-      .select("id")
-      .eq("clerkId", id)
-      .single()
+    // Skapa signup activity in activity log
+    await supabaseService.activities.log(newUser.id, USER_EVENT_TYPES.SIGNUP)
 
-    if (fetchError) {
-      logger.error("Error fetching new user:", fetchError)
-    } else {
-      // Skapa signup activity in activity log
-      await supabaseClient.from("user_activitie_log").insert([
-        {
-          active_user: newUser.id,
-          type_of_activity: USER_EVENT_TYPES.SIGNUP,
-        },
-      ])
+    // Save social accounts if they exist
+    if (external_accounts && external_accounts.length > 0) {
+      const socialAccountsToInsert = external_accounts.map((account) => ({
+        user_id: newUser.id,
+        provider: account.provider,
+        provider_user_id: account.provider_user_id,
+        email: account.email_address || null,
+        profile_url: account.profile_image_url || null,
+      }))
 
-      // Save social accounts if they exist
-      if (external_accounts && external_accounts.length > 0) {
-        const socialAccountsToInsert = external_accounts.map((account) => ({
-          user_id: newUser.id,
-          provider: account.provider,
-          provider_user_id: account.provider_user_id,
-          email: account.email_address || null,
-          profile_url: account.profile_image_url || null,
-        }))
-
-        await supabaseClient
-          .from("user_social_accounts")
-          .insert(socialAccountsToInsert)
-      }
+      await supabaseService.socialAccounts.create(socialAccountsToInsert)
     }
+
+    logger.info("User creation completed successfully", {
+      userId: newUser.id,
+      clerkId: id,
+      hasExternalAccounts: external_accounts.length > 0,
+    })
 
     // Return success response
-    return res.status(200).json({
-      success: true,
-      message: "User creation processed",
-      userId: id,
-    })
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "User saved to Supabase",
+        uniqueGlobalId: uniqueGlobalId,
+      }),
+    }
   } catch (error) {
     logger.error("Error processing user.created event:", error)
-    throw error // Let the main handler handle the error
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: error.message || "Internal server error",
+        details: error,
+      }),
+    }
   }
 }

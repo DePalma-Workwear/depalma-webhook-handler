@@ -3,7 +3,7 @@ require("dotenv").config()
 // For future use
 const config = {
   clerk: {
-    webhookSecret: process.env.CLERK_WEBHOOK_SECRET,
+    webhookSecret: process.env.CLERK_WEBHOOK_SECRET_USER,
   },
   supabase: {
     url: process.env.SUPABASE_URL,

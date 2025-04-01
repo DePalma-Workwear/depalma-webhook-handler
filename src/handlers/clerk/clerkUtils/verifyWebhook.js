@@ -24,10 +24,31 @@ exports.verifyWebhook = (req) => {
       throw new Error("Missing required Svix headers")
     }
 
-    // Get webhook secret
-    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
+    // Parse the raw body to get event type
+    const rawPayload = JSON.parse(req.body)
+    const eventType = rawPayload.type
+
+    // Get the appropriate webhook secret based on event type
+    let webhookSecret
+    switch (eventType) {
+      case "user.created":
+        webhookSecret = process.env.CLERK_WEBHOOK_SECRET_USER
+        break
+      case "user.updated":
+        webhookSecret = process.env.CLERK_WEBHOOK_SECRET_USER_UPDATED
+        break
+      case "user.deleted":
+        webhookSecret = process.env.CLERK_WEBHOOK_SECRET_USER_DELETED
+        break
+      case "session.created":
+        webhookSecret = process.env.CLERK_WEBHOOK_SECRET_SESSION
+        break
+      default:
+        webhookSecret = process.env.CLERK_WEBHOOK_SECRET // fallback
+    }
+
     if (!webhookSecret) {
-      throw new Error("Missing CLERK_WEBHOOK_SECRET environment variable")
+      throw new Error(`Missing webhook secret for event type: ${eventType}`)
     }
 
     // Verify webhook signature with Svix
@@ -40,7 +61,7 @@ exports.verifyWebhook = (req) => {
       "svix-signature": svixSignature,
     })
 
-    logger.info("Webhook verified successfully")
+    logger.info(`Webhook verified successfully for event type: ${eventType}`)
     return verifiedPayload
   } catch (error) {
     logger.error("Webhook verification failed:", error)

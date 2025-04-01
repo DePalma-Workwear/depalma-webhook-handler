@@ -36,15 +36,26 @@ app.post("*", async (req, res) => {
   try {
     logger.info("Processing incoming webhook")
 
-    // Identify webhook source based on headers
-    const source = req.headers["x-webhook-source"] || "unknown"
-
-    // Handle Clerk webhooks
-    if (source === "clerk") {
-      logger.info("Identified as Clerk webhook")
+    // Identify Clerk webhooks based on Svix headers
+    if (
+      req.headers["svix-id"] &&
+      req.headers["svix-timestamp"] &&
+      req.headers["svix-signature"]
+    ) {
+      logger.info("Identified as Clerk webhook based on Svix headers")
       await handlers.clerk.handleWebhook(req, res)
     }
-    // Prepared for Stripe
+    //Test-method with x-webhook-source
+    else if (req.headers["x-webhook-source"] === "clerk") {
+      logger.info("Identified as Clerk webhook based on x-webhook-source")
+      await handlers.clerk.handleWebhook(req, res)
+    }
+    // Handle test-mode
+    else if (req.headers["x-test-mode"] === "true") {
+      logger.info("Test mode webhook received")
+      res.status(200).json({ message: "Test webhook received successfully" })
+    }
+    // Prepared for Stripe (commented in original)
     // else if (req.headers['stripe-signature']) {
     //   logger.info('Identified as Stripe webhook');
     //   await stripeHandler.handleWebhook(req, res);
@@ -52,6 +63,7 @@ app.post("*", async (req, res) => {
     else {
       // Unknown source
       logger.warn("Unknown webhook source")
+      logger.warn("Headers received:", JSON.stringify(req.headers))
       res.status(400).json({ error: "Unknown webhook source" })
     }
   } catch (error) {
