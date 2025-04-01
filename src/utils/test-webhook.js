@@ -6,7 +6,7 @@ const axios = require("axios")
 const testName = process.argv[2] || "user-created"
 // Configure which service to test (clerk, stripe, etc.)
 const service = process.argv[3] || "clerk"
-//NOTE: Make sure you are using the correct port
+//NOTE: Make sure you are using the correct port in local testing
 const webhookUrl = "http://localhost:50240/.netlify/functions/webhook"
 
 // Set development mode to simulate verification process
