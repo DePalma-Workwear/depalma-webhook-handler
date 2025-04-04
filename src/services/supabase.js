@@ -166,6 +166,7 @@ const supabaseService = {
 
       return data
     },
+    ut,
   },
 
   // User activity
@@ -205,6 +206,22 @@ const supabaseService = {
       return data
     },
 
+    // Get social accounts by user ID
+    getByUserId: async (userId) => {
+      logger.debug("Getting social accounts for user", { userId })
+      const { data, error } = await supabase
+        .from("user_social_accounts")
+        .select("*")
+        .eq("user_id", userId)
+
+      if (error) {
+        logger.error("Error getting social accounts", error)
+        throw error
+      }
+
+      return data || []
+    },
+
     // Update social accounts for a user
     update: async (userId, accounts) => {
       logger.debug("Updating social accounts", {
@@ -222,6 +239,22 @@ const supabaseService = {
 
       if (error) {
         logger.error("Error updating social accounts", error)
+        throw error
+      }
+
+      return data
+    },
+
+    // Delete social accounts by IDs
+    deleteByIds: async (ids) => {
+      logger.debug("Deleting social accounts", { count: ids.length })
+      const { data, error } = await supabase
+        .from("user_social_accounts")
+        .delete()
+        .in("id", ids)
+
+      if (error) {
+        logger.error("Error deleting social accounts", error)
         throw error
       }
 

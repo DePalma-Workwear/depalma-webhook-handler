@@ -1,8 +1,12 @@
 const logger = require("../../../utils/logger")
 const { v4: uuidv4 } = require("uuid")
-const { supabaseService } = require("../../../services/supabase")
+const { createClient } = require("@supabase/supabase-js")
+const config = require("../../../config")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
+
+// Create Supabase client
+const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
 
 module.exports = async (payload, res) => {
   try {
@@ -57,14 +61,35 @@ module.exports = async (payload, res) => {
     })
 
     // Try to save the user
-    const newUser = await supabaseService.users.create(userDataToInsert)
+    const { data: newUser, error: userError } = await supabase
+      .from("users")
+      .insert(userDataToInsert)
+      .select()
+      .single()
+
+    if (userError) {
+      logger.error("Error creating user in Supabase", userError)
+      throw userError
+    }
 
     if (!newUser) {
       throw new Error("Failed to create user in Supabase")
     }
 
-    // Skapa signup activity in activity log
-    await supabaseService.activities.log(newUser.id, USER_EVENT_TYPES.SIGNUP)
+    // Create signup event in activity log
+    const { error: activityError } = await supabase
+      .from("user_activitie_log")
+      .insert([
+        {
+          active_user: newUser.id,
+          type_of_activity: USER_EVENT_TYPES.SIGNUP,
+        },
+      ])
+
+    if (activityError) {
+      logger.error("Error logging user activity", activityError)
+      throw activityError
+    }
 
     // Save social accounts if they exist
     if (external_accounts && external_accounts.length > 0) {
@@ -76,7 +101,14 @@ module.exports = async (payload, res) => {
         profile_url: account.profile_image_url || null,
       }))
 
-      await supabaseService.socialAccounts.create(socialAccountsToInsert)
+      const { error: socialAccountsError } = await supabase
+        .from("user_social_accounts")
+        .insert(socialAccountsToInsert)
+
+      if (socialAccountsError) {
+        logger.error("Error creating social accounts", socialAccountsError)
+        throw socialAccountsError
+      }
     }
 
     logger.info("User creation completed successfully", {
