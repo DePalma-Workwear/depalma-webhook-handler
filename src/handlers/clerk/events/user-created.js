@@ -63,7 +63,7 @@ module.exports = async (payload, res) => {
       throw new Error("Failed to create user in Supabase")
     }
 
-    // Skapa signup activity in activity log
+    // Create signup event in activity log
     await supabaseService.activities.log(newUser.id, USER_EVENT_TYPES.SIGNUP)
 
     // Save social accounts if they exist

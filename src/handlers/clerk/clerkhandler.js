@@ -5,7 +5,8 @@ const sessionCreatedHandler = require("./events/session-created")
 const logger = require("../../utils/logger")
 const { verifyWebhook } = require("./clerkUtils/verifyWebhook")
 const CLERK_WEBHOOK_SECRET_USER = process.env.CLERK_WEBHOOK_SECRET_USER
-
+const CLERK_WEBHOOK_SECRET_USER_UPDATED =
+  process.env.CLERK_WEBHOOK_SECRET_USER_UPDATE
 exports.handleWebhook = async (req, res) => {
   try {
     // Verify webhook signature first
@@ -22,7 +23,11 @@ exports.handleWebhook = async (req, res) => {
         return userCreatedHandler(payload, res, CLERK_WEBHOOK_SECRET_USER)
 
       case "user.updated":
-        return userUpdatedHandler(payload, res)
+        return userUpdatedHandler(
+          payload,
+          res,
+          CLERK_WEBHOOK_SECRET_USER_UPDATED
+        )
 
       case "user.deleted":
         return userDeletedHandler(payload, res)
