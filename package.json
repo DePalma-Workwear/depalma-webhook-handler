@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "netlify dev",
-    "build": "netlify build",
+    "build": "npm install",
     "deploy": "netlify deploy --prod"
   },
   "keywords": [],
@@ -14,6 +13,7 @@
   "dependencies": {
     "@netlify/functions": "^3.0.4",
     "@supabase/supabase-js": "^2.49.3",
+    "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "serverless-http": "^3.2.0",
@@ -21,7 +21,6 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "axios": "^1.8.4",
     "netlify-cli": "^19.0.3"
   }
 }

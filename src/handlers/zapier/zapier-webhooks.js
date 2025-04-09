@@ -30,10 +30,10 @@ const sendToZapier = async (webhookUrl, payload) => {
 }
 
 const sendUserCreatedToZapier = async (payload) => {
-  if (!config.zapier.userCreatedWebhookUrl) {
-    logger.warn("No Zapier webhook URL configured for user.created events")
-    return
-  }
+  // if (!config.zapier.userCreatedWebhookUrl) {
+  //   logger.warn("No Zapier webhook URL configured for user.created events")
+  //   return
+  // }
 
   // return sendToZapier(config.zapier.userCreatedWebhookUrl, payload)
   return sendToZapier(
@@ -43,10 +43,10 @@ const sendUserCreatedToZapier = async (payload) => {
 }
 
 const sendUserUpdatedToZapier = async (payload) => {
-  if (!config.zapier.userUpdatedWebhookUrl) {
-    logger.warn("No Zapier webhook URL configured for user.updated events")
-    return
-  }
+  // if (!config.zapier.userUpdatedWebhookUrl) {
+  //   logger.warn("No Zapier webhook URL configured for user.updated events")
+  //   return
+  // }
 
   // return sendToZapier(config.zapier.userUpdatedWebhookUrl, payload)
   return sendToZapier(
