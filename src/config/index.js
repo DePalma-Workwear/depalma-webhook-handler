@@ -14,6 +14,10 @@ const config = {
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   },
+  zapier: {
+    userCreatedWebhookUrl: process.env.ZAPIER_USER_CREATED_WEBHOOK_URL,
+    userUpdatedWebhookUrl: process.env.ZAPIER_USER_UPDATED_WEBHOOK_URL,
+  },
   // Common settings
   environment: process.env.NODE_ENV || "development",
   isProduction: process.env.NODE_ENV === "production",

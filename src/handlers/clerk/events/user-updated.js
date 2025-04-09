@@ -3,6 +3,7 @@ const { createClient } = require("@supabase/supabase-js")
 const config = require("../../../config")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
+const { sendUserUpdatedToZapier } = require("../../zapier/zapier-webhooks")
 
 // Create Supabase client
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
@@ -39,6 +40,20 @@ module.exports = async (payload, res) => {
     }
 
     await handleUserUpdated(data)
+
+    // Send data to Zapier
+    try {
+      await sendUserUpdatedToZapier(payload)
+      logger.info("Successfully sent user.updated data to Zapier", {
+        userId: data.id,
+      })
+    } catch (zapierError) {
+      logger.error("Failed to send data to Zapier", {
+        error: zapierError,
+        userId: data.id,
+      })
+      // Don't throw the error as we don't want to fail the whole process
+    }
 
     return {
       statusCode: 200,
@@ -145,6 +160,7 @@ async function handleUserUpdated(data) {
       provider: acc.provider,
       provider_user_id: acc.provider_user_id,
       email: acc.email_address || null,
+      profile_url: acc.profile_image_url || null,
     }))
 
   // Identify accounts to remove
@@ -156,17 +172,27 @@ async function handleUserUpdated(data) {
 
   // Add new accounts
   if (accountsToAdd.length > 0) {
-    const { error: createError } = await supabase
+    logger.info("Attempting to add social accounts:", {
+      accounts: accountsToAdd,
+      count: accountsToAdd.length,
+    })
+
+    const { error: createError, data: createdAccounts } = await supabase
       .from("user_social_accounts")
       .insert(accountsToAdd)
+      .select()
 
     if (createError) {
-      logger.error("Error creating social accounts", createError)
+      logger.error("Error creating social accounts", {
+        error: createError,
+        accounts: accountsToAdd,
+      })
       throw createError
     }
 
     logger.info(`Added ${accountsToAdd.length} new social accounts`, {
       userId: user.id,
+      addedAccounts: createdAccounts,
     })
     operationsPerformed = true
   }

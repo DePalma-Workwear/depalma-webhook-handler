@@ -4,6 +4,7 @@ const { createClient } = require("@supabase/supabase-js")
 const config = require("../../../config")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
+const { sendUserCreatedToZapier } = require("../../zapier/zapier-webhooks")
 
 // Create Supabase client
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
@@ -116,6 +117,20 @@ module.exports = async (payload, res) => {
       clerkId: id,
       hasExternalAccounts: external_accounts.length > 0,
     })
+
+    // Send data to Zapier
+    try {
+      await sendUserCreatedToZapier(payload)
+      logger.info("Successfully sent user.created data to Zapier", {
+        userId: newUser.id,
+      })
+    } catch (zapierError) {
+      logger.error("Failed to send data to Zapier", {
+        error: zapierError,
+        userId: newUser.id,
+      })
+      // Don't throw the error as we don't want to fail the whole process
+    }
 
     // Return success response
     return {
