@@ -43,7 +43,7 @@ module.exports = async (payload, res) => {
 
     // Send data to Zapier
     try {
-      await sendUserUpdatedToZapier(payload)
+      await sendUserUpdatedToZapier(payload, data)
       logger.info("Successfully sent user.updated data to Zapier", {
         userId: data.id,
       })
