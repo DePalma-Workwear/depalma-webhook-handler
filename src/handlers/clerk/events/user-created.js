@@ -45,6 +45,32 @@ module.exports = async (payload, res) => {
       throw new Error("Missing required field: id")
     }
 
+    // Kolla om användaren redan finns i Supabase
+    const { data: existingUser, error: checkError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("clerkId", id)
+      .single()
+
+    if (checkError && checkError.code !== "PGRST116") {
+      logger.error("Error checking for existing user", checkError)
+      throw checkError
+    }
+
+    if (existingUser) {
+      logger.info("User already exists in Supabase, skipping creation", {
+        userId: existingUser.id,
+        clerkId: id,
+      })
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: "User already exists in Supabase",
+          userId: existingUser.id,
+        }),
+      }
+    }
+
     // Prepare user data for Supabase
     const userDataToInsert = {
       clerkId: id,

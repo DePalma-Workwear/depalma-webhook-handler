@@ -91,14 +91,58 @@ async function handleUserUpdated(data) {
     .eq("clerkId", clerkId)
     .single()
 
-  if (userError) {
+  if (userError && userError.code !== "PGRST116") {
     logger.error("Error getting user by clerkId", userError)
     throw userError
   }
 
+  // Om användaren inte finns, skapa den
   if (!user) {
-    logger.error("User not found", { clerkId })
-    return
+    logger.info("User not found in Supabase, creating new user", { clerkId })
+
+    const { data: newUser, error: createError } = await supabase
+      .from("users")
+      .insert([
+        {
+          clerkId,
+          email: email_addresses?.[0]?.email_address,
+          firstName: first_name,
+          lastName: last_name,
+          username: username,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single()
+
+    if (createError) {
+      logger.error("Error creating user in Supabase", createError)
+      throw createError
+    }
+
+    logger.info("Successfully created user in Supabase", { userId: newUser.id })
+    return newUser
+  }
+
+  // Hämta gamla social accounts från Supabase
+  const { data: oldSocialAccounts, error: oldSocialAccountsError } =
+    await supabase
+      .from("user_social_accounts")
+      .select("*")
+      .eq("user_id", user.id)
+
+  if (oldSocialAccountsError) {
+    logger.error("Error getting old social accounts", oldSocialAccountsError)
+    throw oldSocialAccountsError
+  }
+
+  // Förbered data för att skicka till Zapier
+  const oldData = {
+    first_name: user.firstName,
+    last_name: user.lastName,
+    email_addresses: user.email ? [{ email_address: user.email }] : [],
+    external_accounts: oldSocialAccounts || [],
   }
 
   // Prepare user data for update
@@ -116,27 +160,41 @@ async function handleUserUpdated(data) {
     .update(userDataToUpdate)
     .eq("clerkId", clerkId)
     .select()
+    .single()
 
   if (updateError) {
     logger.error("Error updating user", updateError)
     throw updateError
   }
 
-  if (!updatedUser || updatedUser.length === 0) {
+  if (!updatedUser) {
     logger.error("Failed to update user", { clerkId })
     return
   }
 
+  // Skicka till Zapier med både gamla och nya data
+  try {
+    await sendUserUpdatedToZapier(payload, data, oldData)
+    logger.info("Successfully sent user.updated data to Zapier", {
+      userId: data.id,
+    })
+  } catch (zapierError) {
+    logger.error("Failed to send data to Zapier", {
+      error: zapierError,
+      userId: data.id,
+    })
+  }
+
   // Get existing social accounts
-  const { data: existingSocialAccounts, error: socialAccountsError } =
+  const { data: existingSocialAccounts, error: existingSocialAccountsError } =
     await supabase
       .from("user_social_accounts")
       .select("*")
       .eq("user_id", user.id)
 
-  if (socialAccountsError) {
-    logger.error("Error getting social accounts", socialAccountsError)
-    throw socialAccountsError
+  if (existingSocialAccountsError) {
+    logger.error("Error getting social accounts", existingSocialAccountsError)
+    throw existingSocialAccountsError
   }
 
   // Create maps for comparison
