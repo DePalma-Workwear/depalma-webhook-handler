@@ -42,21 +42,7 @@ module.exports = async (payload, res, webhookSecret) => {
       })
     }
 
-    await handleUserUpdated(data)
-
-    // Send data to Zapier
-    try {
-      await sendUserUpdatedToZapier(payload, data)
-      logger.info("Successfully sent user.updated data to Zapier", {
-        userId: data.id,
-      })
-    } catch (zapierError) {
-      logger.error("Failed to send data to Zapier", {
-        error: zapierError,
-        userId: data.id,
-      })
-      // Don't throw the error as we don't want to fail the whole process
-    }
+    const result = await handleUserUpdated(data, payload)
 
     return {
       statusCode: 200,
@@ -74,7 +60,7 @@ module.exports = async (payload, res, webhookSecret) => {
   }
 }
 
-async function handleUserUpdated(data) {
+async function handleUserUpdated(data, payload) {
   const {
     id: clerkId,
     email_addresses = [],

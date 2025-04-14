@@ -1,87 +1,83 @@
-const logger = require("../../utils/logger")
 const axios = require("axios")
-const config = require("../../config")
+const logger = require("../../utils/logger")
 
-async function sendToZapier(payload, oldData = null) {
+// Temporär URL för testning
+const webhookUrl = "https://webhook.site/936c8c6f-b0bf-4b30-9bd8-2ff8731f1b7e"
+
+async function sendToZapier(payload, type) {
   try {
-    const webhookUrl = process.env.ZAPIER_WEBHOOK_URL
+    logger.info("Sending data to Zapier", { type })
+
     if (!webhookUrl) {
-      throw new Error("ZAPIER_WEBHOOK_URL is not configured")
+      throw new Error("Webhook URL is not configured")
     }
 
-    const payloadType = payload.type
-    const userId = payload.data.id
-
-    logger.info("Sending data to Zapier webhook", {
-      webhookUrl,
-      payloadType,
-      userId,
-    })
-
-    let dataToSend = {
-      type: payloadType,
-      userId: userId,
-      oldData: null,
-      newData: null,
+    const userData = {
+      type,
+      clerkId: payload.data.id,
+      email: payload.data.email_addresses[0].email_address,
+      firstName: payload.data.first_name,
+      lastName: payload.data.last_name,
+      username: payload.data.username,
+      imageUrl: payload.data.image_url,
+      profileImageUrl: payload.data.profile_image_url,
+      externalAccounts: payload.data.external_accounts || [],
+      createdAt: payload.data.created_at,
+      updatedAt: payload.data.updated_at,
     }
 
-    if (payloadType === "user.updated" && oldData) {
-      dataToSend.oldData = oldData
-      dataToSend.newData = payload.data
+    const dataToSend = {
+      NEW_USER_CREATED: userData,
     }
 
-    logger.info("Data to send", { dataToSend })
+    logger.info("Sending payload to Zapier", { dataToSend })
 
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(dataToSend),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
+    const response = await axios.post(webhookUrl, dataToSend)
     logger.info("Successfully sent data to Zapier", {
       status: response.status,
-      webhookUrl,
-      payloadType,
+      data: response.data,
     })
 
-    return response
+    return response.data
   } catch (error) {
-    logger.error("Error sending data to Zapier:", error)
+    logger.error("Error sending data to Zapier:", {
+      error: error.message,
+      stack: error.stack,
+      payload: payload,
+    })
     throw error
   }
 }
 
-async function sendUserUpdatedToZapier(payload, data, oldData) {
+async function sendUserCreatedToZapier(payload) {
   try {
-    logger.info("Sending user.updated data to Zapier", {
-      userId: data.id,
+    logger.info("Sending user.created event to Zapier", {
+      userId: payload.data.id,
+    })
+    return await sendToZapier(payload, "user.created")
+  } catch (error) {
+    logger.error("Failed to send user.created event to Zapier:", {
+      error: error.message,
+      stack: error.stack,
+    })
+    throw error
+  }
+}
+
+async function sendUserUpdatedToZapier(payload, oldData) {
+  try {
+    logger.info("Sending user.updated event to Zapier", {
+      userId: payload.data.id,
       hasOldData: !!oldData,
     })
-
-    await sendToZapier(payload, oldData)
+    return await sendToZapier(payload, "user.updated")
   } catch (error) {
-    logger.error("Error in sendUserUpdatedToZapier:", error)
+    logger.error("Failed to send user.updated event to Zapier:", {
+      error: error.message,
+      stack: error.stack,
+    })
     throw error
   }
-}
-
-const sendUserCreatedToZapier = async (payload) => {
-  // if (!config.zapier.userCreatedWebhookUrl) {
-  //   logger.warn("No Zapier webhook URL configured for user.created events")
-  //   return
-  // }
-
-  // return sendToZapier(config.zapier.userCreatedWebhookUrl, payload)
-  return sendToZapier(
-    "https://webhook.site/2c1cc6f6-21c5-43a7-946d-f3bffe86f8e5",
-    payload
-  )
 }
 
 module.exports = {
