@@ -8,7 +8,7 @@ const { sendUserUpdatedToZapier } = require("../../zapier/zapier-webhooks")
 // Create Supabase client
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
 
-module.exports = async (payload, res) => {
+module.exports = async (payload, res, webhookSecret) => {
   try {
     if (!payload || !payload.data) {
       throw new Error("Invalid payload: Missing data")
@@ -26,7 +26,10 @@ module.exports = async (payload, res) => {
       }
     }
 
-    logger.info("Processing user.updated event", { userId: data.id })
+    logger.info("Processing user.updated event", {
+      userId: data.id,
+      webhookSecret: webhookSecret ? "present" : "missing",
+    })
 
     if (isTestMode(res.req)) {
       logger.info("Test mode detected, simulating user update")

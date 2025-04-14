@@ -34,53 +34,74 @@ const getChangedFields = (oldData, newData) => {
       if (JSON.stringify(oldArray) !== JSON.stringify(newArray)) {
         changes[`new_${clerkField}`] = newArray
         changes[`old_${clerkField}`] = oldArray
-        changedFields.push(clerkField)
+        changedFields.push({
+          field: clerkField,
+          old: oldArray,
+          new: newArray,
+        })
       }
     } else {
       // For simple fields, compare values
       if (oldValue !== newValue) {
         changes[`new_${clerkField}`] = newValue
         changes[`old_${clerkField}`] = oldValue
-        changedFields.push(clerkField)
+        changedFields.push({
+          field: clerkField,
+          old: oldValue,
+          new: newValue,
+        })
       }
     }
   })
 
+  logger.info("Changed fields", { changedFields }, "Changes", { changes })
+
   return { changes, changedFields }
 }
 
-const sendToZapier = async (webhookUrl, payload, oldData = null) => {
+const sendToZapier = async (webhookUrl, userDataToUpdate, user) => {
   try {
     logger.info("Sending data to Zapier webhook", {
       webhookUrl,
-      payloadType: payload.type,
-      userId: payload.data?.id,
+      payloadType: userDataToUpdate.type,
+      userId: userDataToUpdate.data?.id,
     })
 
-    let dataToSend = payload
-
+    let dataToSend
+    logger.info(
+      "User data to update inside sendToZapier",
+      { userDataToUpdate },
+      "User",
+      { user }
+    )
     // If it's an update and we have old data, send only the changes
-    if (payload.type === "user.updated" && oldData) {
-      const { changes, changedFields } = getChangedFields(oldData, payload)
+    if (userDataToUpdate.type === "user.updated" && user) {
+      const { changes, changedFields } = getChangedFields(
+        user,
+        userDataToUpdate
+      )
       dataToSend = {
-        ...payload,
+        ...userDataToUpdate,
         changes: changes,
         "event type": "USER_UPDATED",
         "changed fields": changedFields,
       }
-    } else if (payload.type === "user.created") {
+    } else if (userDataToUpdate.type === "user.created") {
       dataToSend = {
-        ...payload,
+        ...userDataToUpdate,
         "event type": "USER_CREATED",
+        user: userDataToUpdate.data,
       }
     }
+
+    logger.info("Data to send", { dataToSend })
 
     const response = await axios.post(webhookUrl, dataToSend)
 
     logger.info("Successfully sent data to Zapier", {
       status: response.status,
       webhookUrl,
-      payloadType: payload.type,
+      payloadType: userDataToUpdate.type,
       changedFields: dataToSend["changed fields"],
     })
 
@@ -89,7 +110,7 @@ const sendToZapier = async (webhookUrl, payload, oldData = null) => {
     logger.error("Error sending data to Zapier", {
       error: error.message,
       webhookUrl,
-      payloadType: payload.type,
+      payloadType: userDataToUpdate?.type,
     })
     throw error
   }
@@ -108,17 +129,16 @@ const sendUserCreatedToZapier = async (payload) => {
   )
 }
 
-const sendUserUpdatedToZapier = async (payload, oldData) => {
-  // if (!config.zapier.userUpdatedWebhookUrl) {
-  //   logger.warn("No Zapier webhook URL configured for user.updated events")
-  //   return
-  // }
+const sendUserUpdatedToZapier = async (userDataToUpdate, user) => {
+  logger.info("Sending user update to Zapier", {
+    userDataToUpdate: JSON.stringify(userDataToUpdate),
+    user: JSON.stringify(user),
+  })
 
-  // return sendToZapier(config.zapier.userUpdatedWebhookUrl, payload, oldData)
   return sendToZapier(
     "https://webhook.site/2c1cc6f6-21c5-43a7-946d-f3bffe86f8e5",
-    payload,
-    oldData
+    userDataToUpdate,
+    user
   )
 }
 
