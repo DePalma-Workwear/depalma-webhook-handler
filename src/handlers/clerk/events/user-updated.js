@@ -3,7 +3,9 @@ const { createClient } = require("@supabase/supabase-js")
 const config = require("../../../config")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
-const { sendUserUpdatedToZapier } = require("../../zapier/zapier-webhooks")
+const {
+  sendUserUpdatedToZapier,
+} = require("../../zapier/zapier-user-updated-webhook")
 
 // Create Supabase client
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
@@ -70,6 +72,10 @@ async function handleUserUpdated(data, payload) {
     external_accounts = [],
   } = data
 
+  logger.info("Processing user.updated event in handleUserUpdated", {
+    userId: clerkId,
+  })
+
   // Get user from Supabase
   const { data: user, error: userError } = await supabase
     .from("users")
@@ -82,36 +88,12 @@ async function handleUserUpdated(data, payload) {
     throw userError
   }
 
-  // Om användaren inte finns, skapa den
   if (!user) {
-    logger.info("User not found in Supabase, creating new user", { clerkId })
-
-    const { data: newUser, error: createError } = await supabase
-      .from("users")
-      .insert([
-        {
-          clerkId,
-          email: email_addresses?.[0]?.email_address,
-          firstName: first_name,
-          lastName: last_name,
-          username: username,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single()
-
-    if (createError) {
-      logger.error("Error creating user in Supabase", createError)
-      throw createError
-    }
-
-    logger.info("Successfully created user in Supabase", { userId: newUser.id })
-    return newUser
+    logger.info("User not found in Supabase, skipping update", { clerkId })
+    return
   }
 
-  // Hämta gamla social accounts från Supabase
+  // Get old social accounts from Supabase
   const { data: oldSocialAccounts, error: oldSocialAccountsError } =
     await supabase
       .from("user_social_accounts")
@@ -123,7 +105,7 @@ async function handleUserUpdated(data, payload) {
     throw oldSocialAccountsError
   }
 
-  // Förbered data för att skicka till Zapier
+  // Prepare data to send to Zapier
   const oldData = {
     first_name: user.firstName,
     last_name: user.lastName,
@@ -141,6 +123,7 @@ async function handleUserUpdated(data, payload) {
   }
 
   // Update user information
+  // Update user information in Supabase
   const { data: updatedUser, error: updateError } = await supabase
     .from("users")
     .update(userDataToUpdate)
@@ -158,7 +141,7 @@ async function handleUserUpdated(data, payload) {
     return
   }
 
-  // Skicka till Zapier med både gamla och nya data
+  // Send to Zapier with both old and new data
   try {
     await sendUserUpdatedToZapier(payload, data, oldData)
     logger.info("Successfully sent user.updated data to Zapier", {

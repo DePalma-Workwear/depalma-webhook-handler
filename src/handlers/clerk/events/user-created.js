@@ -4,7 +4,9 @@ const { createClient } = require("@supabase/supabase-js")
 const config = require("../../../config")
 const { USER_EVENT_TYPES } = require("./event-types/types")
 const { isTestMode } = require("../../../utils/test-mode")
-const { sendUserCreatedToZapier } = require("../../zapier/zapier-webhooks")
+const {
+  sendUserCreatedToZapier,
+} = require("../../zapier/zapier-user-created-webhooks")
 
 // Create Supabase client
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey)

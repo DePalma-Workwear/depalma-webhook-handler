@@ -1,5 +1,5 @@
 const userCreatedHandler = require("./events/user-created")
-const userUpdatedHandler = require("./events/user-created")
+const userUpdatedHandler = require("./events/user-updated")
 const userDeletedHandler = require("./events/user-deleted")
 const sessionCreatedHandler = require("./events/session-created")
 const logger = require("../../utils/logger")
@@ -24,7 +24,7 @@ exports.handleWebhook = async (req, res) => {
     const eventType = payload.type
     logger.info(`Processing Clerk event: ${eventType}`)
 
-    // Hantera eventet först
+    // Manage user.updated event
     try {
       // Route to correct handler based on event type
       switch (eventType) {
