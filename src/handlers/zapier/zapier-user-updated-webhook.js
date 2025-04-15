@@ -21,14 +21,8 @@ function findChangedFields(oldData, newData) {
         }
       } else if (key === "external_accounts") {
         changes[key] = {
-          old: oldValue.map((acc) => ({
-            provider: acc.provider,
-            email: acc.email,
-          })),
-          new: newValue.map((acc) => ({
-            provider: acc.provider,
-            email: acc.email_address,
-          })),
+          old: oldValue,
+          new: newValue,
         }
       } else {
         changes[key] = {
@@ -44,7 +38,32 @@ function findChangedFields(oldData, newData) {
 
 async function sendUserUpdatedToZapier(payload, newData, oldData) {
   try {
-    const changes = findChangedFields(oldData, newData)
+    // Manipulate external_accounts before comparison
+    const manipulatedNewData = {
+      ...newData,
+      external_accounts:
+        newData.external_accounts?.map((account) => ({
+          provider: account.provider,
+          email: account.email_address,
+          provider_user_id: account.provider_user_id,
+          first_name: account.first_name,
+          last_name: account.last_name,
+        })) || [],
+    }
+
+    const manipulatedOldData = {
+      ...oldData,
+      external_accounts:
+        oldData.external_accounts?.map((account) => ({
+          provider: account.provider,
+          email: account.email,
+          provider_user_id: account.provider_user_id,
+          first_name: account.first_name,
+          last_name: account.last_name,
+        })) || [],
+    }
+
+    const changes = findChangedFields(manipulatedOldData, manipulatedNewData)
 
     const zapierPayload = {
       USER_UPDATE: {

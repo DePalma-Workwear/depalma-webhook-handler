@@ -12,6 +12,20 @@ async function sendToZapier(payload, type) {
       throw new Error("Webhook URL is not configured")
     }
 
+    // Manipulate external_accounts to only include specific fields
+    const manipulatedExternalAccounts = (
+      payload.data.external_accounts || []
+    ).map((account) => ({
+      provider: account.provider,
+      strategy: account.strategy,
+      external_account_id: account.external_account_id,
+      email_address: account.email_address,
+      google_id: account.google_id || null,
+      provider_user_id: account.provider_user_id,
+      first_name: account.first_name,
+      last_name: account.last_name,
+    }))
+
     const userData = {
       type,
       clerkId: payload.data.id,
@@ -19,11 +33,12 @@ async function sendToZapier(payload, type) {
       firstName: payload.data.first_name,
       lastName: payload.data.last_name,
       username: payload.data.username,
-      imageUrl: payload.data.image_url,
-      profileImageUrl: payload.data.profile_image_url,
-      externalAccounts: payload.data.external_accounts || [],
+      externalAccounts: manipulatedExternalAccounts,
       createdAt: payload.data.created_at,
       updatedAt: payload.data.updated_at,
+      clerk_org_id: payload.data.clerk_org_id,
+      organization_name: payload.data.organization_name,
+      unique_global_id: payload.data.unique_global_id || null,
     }
 
     const dataToSend = {
